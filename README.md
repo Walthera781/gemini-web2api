@@ -40,7 +40,21 @@ chmod +x gemini-web2api
 .\gemini-web2api.exe --port 8081
 ```
 
-### 2. Build from Source
+### 2. Install via Go Toolchain
+
+If you have Go 1.22+ installed on your system:
+
+```bash
+go install github.com/ikhsan3adi/gemini-web2api@latest
+```
+
+This compiles and places the binary directly into your `$GOPATH/bin` (or `%USERPROFILE%\go\bin`). Run it from anywhere:
+
+```bash
+gemini-web2api --port 8081
+```
+
+### 3. Build from Source
 
 Prerequisites: Go 1.22+
 
@@ -65,7 +79,7 @@ go build -o gemini-web2api.exe .
 
 Server starts at `http://localhost:8081/v1`.
 
-### 3. Run via Docker
+### 4. Run via Docker
 
 Before running via Docker, copy the example config file:
 ```bash
