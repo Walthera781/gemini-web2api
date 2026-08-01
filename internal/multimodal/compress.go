@@ -3,6 +3,7 @@ package multimodal
 import (
 	"bytes"
 	"encoding/base64"
+	"fmt"
 	"image"
 	"image/jpeg"
 	_ "image/png"
@@ -24,18 +25,12 @@ func CompressIfNeeded(b64 string, maxSize int) (string, error) {
 
 	imgData, err := base64.StdEncoding.DecodeString(b64)
 	if err != nil {
-		if len(b64) > maxSize {
-			return b64[:maxSize], nil
-		}
-		return b64, nil
+		return "", fmt.Errorf("failed to decode base64 image: %w", err)
 	}
 
 	img, _, err := image.Decode(bytes.NewReader(imgData))
 	if err != nil {
-		if len(b64) > maxSize {
-			return b64[:maxSize], nil
-		}
-		return b64, nil
+		return "", fmt.Errorf("failed to decode image format: %w", err)
 	}
 
 	bounds := img.Bounds()
@@ -57,10 +52,7 @@ func CompressIfNeeded(b64 string, maxSize int) (string, error) {
 	var buf bytes.Buffer
 	err = jpeg.Encode(&buf, dstImg, &jpeg.Options{Quality: 60})
 	if err != nil {
-		if len(b64) > maxSize {
-			return b64[:maxSize], nil
-		}
-		return b64, nil
+		return "", fmt.Errorf("failed to encode jpeg: %w", err)
 	}
 
 	compressedB64 := base64.StdEncoding.EncodeToString(buf.Bytes())

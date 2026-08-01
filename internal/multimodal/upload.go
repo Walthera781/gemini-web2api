@@ -7,12 +7,11 @@ import (
 	"log"
 	"net/http"
 	"strings"
-	"time"
 
 	"github.com/ikhsan3adi/gemini-web2api/internal/gemini"
 )
 
-func UploadImage(client *http.Client, tokens PageTokens, imgBytes []byte, mime string, cookieCache *gemini.CookieCache, authUser string) (string, error) {
+func UploadImage(client gemini.Requester, tokens PageTokens, imgBytes []byte, mime string, cookieCache *gemini.CookieCache, authUser string) (string, error) {
 	if mime == "" {
 		mime = "image/png"
 	}
@@ -100,17 +99,14 @@ func UploadImage(client *http.Client, tokens PageTokens, imgBytes []byte, mime s
 	return fileRef, nil
 }
 
-func FetchImageBytes(client *http.Client, imageURL string) ([]byte, error) {
+func FetchImageBytes(client gemini.Requester, imageURL string) ([]byte, error) {
 	req, err := http.NewRequest("GET", imageURL, nil)
 	if err != nil {
 		return nil, err
 	}
 	req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
 
-	c := *client
-	c.Timeout = 30 * time.Second
-
-	resp, err := c.Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
 		log.Printf("Image fetch failed: %v", err)
 		return nil, err

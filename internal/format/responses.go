@@ -3,6 +3,8 @@ package format
 import (
 	"fmt"
 	"strings"
+
+	"github.com/ikhsan3adi/gemini-web2api/internal/models"
 )
 
 func ResponsesInputToMessages(input any, instructions string) ([]map[string]any, error) {
@@ -130,7 +132,7 @@ func ResponsesInputToMessages(input any, instructions string) ([]map[string]any,
 	return messages, nil
 }
 
-func BuildResponseOutput(text string, toolCalls []ToolCall, msgID string) []map[string]any {
+func BuildResponseOutput(text string, toolCalls []models.OpenAIToolCall, msgID string) []map[string]any {
 	var output []map[string]any
 
 	if len(toolCalls) > 0 {

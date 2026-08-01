@@ -13,6 +13,12 @@ import (
 	"github.com/ikhsan3adi/gemini-web2api/internal/gemini"
 )
 
+var (
+	rePushID = regexp.MustCompile(`"qKIAYe":"([^"]+)"`)
+	rePctx   = regexp.MustCompile(`"Ylro7b":"([^"]+)"`)
+	reAt     = regexp.MustCompile(`"thykhd":"([^"]+)"`)
+)
+
 type PageTokens struct {
 	PushID string
 	Pctx   string
@@ -73,13 +79,13 @@ func (c *TokenCache) fetchPageTokens() PageTokens {
 	}
 
 	html := string(bodyBytes)
-	if m := regexp.MustCompile(`"qKIAYe":"([^"]+)"`).FindStringSubmatch(html); len(m) > 1 {
+	if m := rePushID.FindStringSubmatch(html); len(m) > 1 {
 		tokens.PushID = m[1]
 	}
-	if m := regexp.MustCompile(`"Ylro7b":"([^"]+)"`).FindStringSubmatch(html); len(m) > 1 {
+	if m := rePctx.FindStringSubmatch(html); len(m) > 1 {
 		tokens.Pctx = m[1]
 	}
-	if m := regexp.MustCompile(`"thykhd":"([^"]+)"`).FindStringSubmatch(html); len(m) > 1 {
+	if m := reAt.FindStringSubmatch(html); len(m) > 1 {
 		tokens.At = m[1]
 	}
 

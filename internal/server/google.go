@@ -38,7 +38,7 @@ func (a *App) handleGoogleGenerate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var req map[string]any
+	var req models.GoogleGenerateRequest
 	if err := json.Unmarshal(bodyBytes, &req); err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]any{"error": map[string]any{"message": "invalid JSON"}})
 		return
@@ -54,15 +54,12 @@ func (a *App) handleGoogleGenerate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	toolConfig, _ := req["toolConfig"].(map[string]any)
 	fcMode := "AUTO"
-	if fcConfig, ok := toolConfig["functionCallingConfig"].(map[string]any); ok {
-		if m, ok := fcConfig["mode"].(string); ok && m != "" {
-			fcMode = m
-		}
+	if req.ToolConfig != nil && req.ToolConfig.FunctionCallingConfig != nil && req.ToolConfig.FunctionCallingConfig.Mode != "" {
+		fcMode = req.ToolConfig.FunctionCallingConfig.Mode
 	}
 
-	hasTools := req["tools"] != nil && fcMode != "NONE"
+	hasTools := len(req.Tools) > 0 && fcMode != "NONE"
 
 	prompt, images, err := format.GoogleContentsToPrompt(req)
 	if err != nil || len(prompt) == 0 {
@@ -84,19 +81,19 @@ func (a *App) handleGoogleGenerate(w http.ResponseWriter, r *http.Request) {
 				return nil
 			}
 			fullText += delta
-			chunkObj := map[string]any{
-				"candidates": []map[string]any{
+			chunkObj := models.GoogleGenerateResponse{
+				Candidates: []models.GoogleCandidate{
 					{
-						"index": 0,
-						"content": map[string]any{
-							"role": "model",
-							"parts": []map[string]any{
-								{"text": delta},
+						Index: 0,
+						Content: &models.GoogleContent{
+							Role: "model",
+							Parts: []models.GooglePart{
+								{Text: delta},
 							},
 						},
 					},
 				},
-				"modelVersion": resolved.Name,
+				ModelVersion: resolved.Name,
 			}
 			return writeSSEData(w, chunkObj)
 		})
@@ -104,19 +101,19 @@ func (a *App) handleGoogleGenerate(w http.ResponseWriter, r *http.Request) {
 		if emitErr == nil {
 			promptTokens := len(prompt) / 4
 			candidatesTokens := len(fullText) / 4
-			finalChunk := map[string]any{
-				"candidates": []map[string]any{
+			finalChunk := models.GoogleGenerateResponse{
+				Candidates: []models.GoogleCandidate{
 					{
-						"index":        0,
-						"finishReason": "STOP",
+						Index:        0,
+						FinishReason: "STOP",
 					},
 				},
-				"usageMetadata": map[string]any{
-					"promptTokenCount":     promptTokens,
-					"candidatesTokenCount": candidatesTokens,
-					"totalTokenCount":      promptTokens + candidatesTokens,
+				UsageMetadata: &models.GoogleUsageMetadata{
+					PromptTokenCount:     promptTokens,
+					CandidatesTokenCount: candidatesTokens,
+					TotalTokenCount:      promptTokens + candidatesTokens,
 				},
-				"modelVersion": resolved.Name,
+				ModelVersion: resolved.Name,
 			}
 			_ = writeSSEData(w, finalChunk)
 		} else {
@@ -131,52 +128,52 @@ func (a *App) handleGoogleGenerate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var responseParts []map[string]any
+	var responseParts []models.GooglePart
 	if hasTools && text != "" {
 		cleanText, fnCalls := format.ParseGoogleFunctionCalls(text)
 		if len(fnCalls) > 0 {
 			if cleanText != "" {
-				responseParts = append(responseParts, map[string]any{"text": cleanText})
+				responseParts = append(responseParts, models.GooglePart{Text: cleanText})
 			}
 			for _, fc := range fnCalls {
-				responseParts = append(responseParts, map[string]any{
-					"functionCall": map[string]any{
-						"name": fc.Name,
-						"args": fc.Args,
+				responseParts = append(responseParts, models.GooglePart{
+					FunctionCall: &models.GoogleFunctionCall{
+						Name: fc.Name,
+						Args: fc.Args,
 					},
 				})
 			}
 		} else {
-			responseParts = append(responseParts, map[string]any{"text": text})
+			responseParts = append(responseParts, models.GooglePart{Text: text})
 		}
 	} else {
 		fallbackText := text
 		if fallbackText == "" {
 			fallbackText = "I apologize, but I was unable to generate a response. Please try again."
 		}
-		responseParts = append(responseParts, map[string]any{"text": fallbackText})
+		responseParts = append(responseParts, models.GooglePart{Text: fallbackText})
 	}
 
 	promptTokens := len(prompt) / 4
 	candidatesTokens := len(text) / 4
 
-	responseObj := map[string]any{
-		"candidates": []map[string]any{
+	responseObj := models.GoogleGenerateResponse{
+		Candidates: []models.GoogleCandidate{
 			{
-				"index": 0,
-				"content": map[string]any{
-					"role":  "model",
-					"parts": responseParts,
+				Index: 0,
+				Content: &models.GoogleContent{
+					Role:  "model",
+					Parts: responseParts,
 				},
-				"finishReason": "STOP",
+				FinishReason: "STOP",
 			},
 		},
-		"usageMetadata": map[string]any{
-			"promptTokenCount":     promptTokens,
-			"candidatesTokenCount": candidatesTokens,
-			"totalTokenCount":      promptTokens + candidatesTokens,
+		UsageMetadata: &models.GoogleUsageMetadata{
+			PromptTokenCount:     promptTokens,
+			CandidatesTokenCount: candidatesTokens,
+			TotalTokenCount:      promptTokens + candidatesTokens,
 		},
-		"modelVersion": resolved.Name,
+		ModelVersion: resolved.Name,
 	}
 
 	if stream {

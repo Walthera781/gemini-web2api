@@ -109,3 +109,17 @@ func TestCORSPreflight(t *testing.T) {
 		t.Errorf("Expected CORS origin *, got %s", rec.Header().Get("Access-Control-Allow-Origin"))
 	}
 }
+
+func TestMarshalNoEscapeHTML(t *testing.T) {
+	data := map[string]string{
+		"text": "<hello & world>",
+	}
+	b, err := marshalNoEscapeHTML(data)
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
+	expected := `{"text":"<hello & world>"}`
+	if string(b) != expected {
+		t.Errorf("Got %q, want %q", string(b), expected)
+	}
+}

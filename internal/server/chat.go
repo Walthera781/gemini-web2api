@@ -19,13 +19,13 @@ func (a *App) handleChat(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var req map[string]any
+	var req models.OpenAIChatRequest
 	if err := json.Unmarshal(bodyBytes, &req); err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]any{"error": map[string]any{"message": "invalid JSON"}})
 		return
 	}
 
-	modelStr, _ := req["model"].(string)
+	modelStr := req.Model
 	if modelStr == "" {
 		modelStr = a.Cfg.DefaultModel
 	}
@@ -36,59 +36,39 @@ func (a *App) handleChat(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var tools []map[string]any
-	if toolsRaw, ok := req["tools"].([]any); ok {
-		for _, t := range toolsRaw {
-			if tm, ok := t.(map[string]any); ok {
-				tools = append(tools, tm)
-			}
-		}
+	if req.ToolChoice == nil {
+		req.ToolChoice = "auto"
 	}
 
-	toolChoice := req["tool_choice"]
-	if toolChoice == nil {
-		toolChoice = "auto"
-	}
-
-	var messages []map[string]any
-	if msgsRaw, ok := req["messages"].([]any); ok {
-		for _, m := range msgsRaw {
-			if mm, ok := m.(map[string]any); ok {
-				messages = append(messages, mm)
-			}
-		}
-	}
-
-	prompt, err := format.MessagesToPrompt(messages, tools, toolChoice)
+	prompt, err := format.MessagesToPrompt(req)
 	if err != nil || strings.TrimSpace(prompt) == "" {
 		writeJSON(w, http.StatusBadRequest, map[string]any{"error": map[string]any{"message": "empty prompt"}})
 		return
 	}
 
-	stream, _ := req["stream"].(bool)
-	cid := fmt.Sprintf("chatcmpl-%s", randHex(12))
+	cid := fmt.Sprintf("chatcmpl-%s", format.RandHex(12))
 
-	strChoice, isStr := toolChoice.(string)
+	strChoice, isStr := req.ToolChoice.(string)
 	isToolNone := isStr && strChoice == "none"
 
-	if stream && (len(tools) == 0 || isToolNone) {
+	if req.Stream && (len(req.Tools) == 0 || isToolNone) {
 		if !startSSE(w) {
 			return
 		}
 
 		emitErr := a.Gem.GenerateStream(prompt, resolved.Mode, resolved.Think, nil, resolved.Extra, func(delta string) error {
-			chunk := map[string]any{
-				"id":      cid,
-				"object":  "chat.completion.chunk",
-				"created": time.Now().Unix(),
-				"model":   resolved.Name,
-				"choices": []map[string]any{
+			chunk := models.OpenAIChatResponse{
+				ID:      cid,
+				Object:  "chat.completion.chunk",
+				Created: time.Now().Unix(),
+				Model:   resolved.Name,
+				Choices: []models.OpenAIChoice{
 					{
-						"index": 0,
-						"delta": map[string]any{
-							"content": delta,
+						Index: 0,
+						Delta: &models.OpenAIMessage{
+							Content: delta,
 						},
-						"finish_reason": nil,
+						FinishReason: nil,
 					},
 				},
 			}
@@ -96,16 +76,17 @@ func (a *App) handleChat(w http.ResponseWriter, r *http.Request) {
 		})
 
 		if emitErr == nil {
-			endChunk := map[string]any{
-				"id":      cid,
-				"object":  "chat.completion.chunk",
-				"created": time.Now().Unix(),
-				"model":   resolved.Name,
-				"choices": []map[string]any{
+			stopReason := "stop"
+			endChunk := models.OpenAIChatResponse{
+				ID:      cid,
+				Object:  "chat.completion.chunk",
+				Created: time.Now().Unix(),
+				Model:   resolved.Name,
+				Choices: []models.OpenAIChoice{
 					{
-						"index":         0,
-						"delta":         map[string]any{},
-						"finish_reason": "stop",
+						Index:        0,
+						Delta:        &models.OpenAIMessage{},
+						FinishReason: &stopReason,
 					},
 				},
 			}
@@ -123,32 +104,21 @@ func (a *App) handleChat(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var toolCalls []format.ToolCall
-	if len(tools) > 0 && text != "" && !isToolNone {
+	var toolCalls []models.OpenAIToolCall
+	if len(req.Tools) > 0 && text != "" && !isToolNone {
 		text, toolCalls = format.ParseToolCalls(text)
 	}
 
-	msg := map[string]any{
-		"role":    "assistant",
-		"content": text,
+	msg := models.OpenAIMessage{
+		Role:    "assistant",
+		Content: text,
 	}
 	if text == "" {
-		msg["content"] = nil
+		msg.Content = nil
 	}
 
 	if len(toolCalls) > 0 {
-		var tcList []map[string]any
-		for _, tc := range toolCalls {
-			tcList = append(tcList, map[string]any{
-				"id":   tc.ID,
-				"type": tc.Type,
-				"function": map[string]any{
-					"name":      tc.Function.Name,
-					"arguments": tc.Function.Arguments,
-				},
-			})
-		}
-		msg["tool_calls"] = tcList
+		msg.ToolCalls = toolCalls
 	}
 
 	finish := "stop"
@@ -156,20 +126,20 @@ func (a *App) handleChat(w http.ResponseWriter, r *http.Request) {
 		finish = "tool_calls"
 	}
 
-	if stream {
+	if req.Stream {
 		if !startSSE(w) {
 			return
 		}
-		chunk := map[string]any{
-			"id":      cid,
-			"object":  "chat.completion.chunk",
-			"created": time.Now().Unix(),
-			"model":   resolved.Name,
-			"choices": []map[string]any{
+		chunk := models.OpenAIChatResponse{
+			ID:      cid,
+			Object:  "chat.completion.chunk",
+			Created: time.Now().Unix(),
+			Model:   resolved.Name,
+			Choices: []models.OpenAIChoice{
 				{
-					"index":         0,
-					"delta":         msg,
-					"finish_reason": finish,
+					Index:        0,
+					Delta:        &msg,
+					FinishReason: &finish,
 				},
 			},
 		}
@@ -178,23 +148,24 @@ func (a *App) handleChat(w http.ResponseWriter, r *http.Request) {
 	} else {
 		promptTokens := len(prompt) / 4
 		completionTokens := len(text) / 4
-		writeJSON(w, http.StatusOK, map[string]any{
-			"id":      cid,
-			"object":  "chat.completion",
-			"created": time.Now().Unix(),
-			"model":   resolved.Name,
-			"choices": []map[string]any{
+		resp := models.OpenAIChatResponse{
+			ID:      cid,
+			Object:  "chat.completion",
+			Created: time.Now().Unix(),
+			Model:   resolved.Name,
+			Choices: []models.OpenAIChoice{
 				{
-					"index":         0,
-					"message":       msg,
-					"finish_reason": finish,
+					Index:        0,
+					Message:      &msg,
+					FinishReason: &finish,
 				},
 			},
-			"usage": map[string]any{
-				"prompt_tokens":     promptTokens,
-				"completion_tokens": completionTokens,
-				"total_tokens":      promptTokens + completionTokens,
+			Usage: &models.OpenAIUsage{
+				PromptTokens:     promptTokens,
+				CompletionTokens: completionTokens,
+				TotalTokens:      promptTokens + completionTokens,
 			},
-		})
+		}
+		writeJSON(w, http.StatusOK, resp)
 	}
 }

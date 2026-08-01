@@ -1,25 +1,18 @@
 package server
 
 import (
-	"crypto/rand"
-	"encoding/hex"
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"net/http"
 
 	"github.com/ikhsan3adi/gemini-web2api/internal/format"
+	"github.com/ikhsan3adi/gemini-web2api/internal/gemini"
 	"github.com/ikhsan3adi/gemini-web2api/internal/multimodal"
 )
 
-func randHex(n int) string {
-	b := make([]byte, (n+1)/2)
-	_, _ = rand.Read(b)
-	return hex.EncodeToString(b)[:n]
-}
-
 func writeJSON(w http.ResponseWriter, status int, data any) {
 	w.Header().Set("Content-Type", "application/json")
-	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.WriteHeader(status)
 
 	enc := json.NewEncoder(w)
@@ -27,10 +20,23 @@ func writeJSON(w http.ResponseWriter, status int, data any) {
 	_ = enc.Encode(data)
 }
 
+func marshalNoEscapeHTML(data any) ([]byte, error) {
+	var buf bytes.Buffer
+	enc := json.NewEncoder(&buf)
+	enc.SetEscapeHTML(false)
+	if err := enc.Encode(data); err != nil {
+		return nil, err
+	}
+	b := buf.Bytes()
+	if len(b) > 0 && b[len(b)-1] == '\n' {
+		b = b[:len(b)-1]
+	}
+	return b, nil
+}
+
 func startSSE(w http.ResponseWriter) bool {
 	w.Header().Set("Content-Type", "text/event-stream")
 	w.Header().Set("Cache-Control", "no-cache")
-	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.WriteHeader(http.StatusOK)
 
 	flusher, ok := w.(http.Flusher)
@@ -41,7 +47,7 @@ func startSSE(w http.ResponseWriter) bool {
 }
 
 func writeSSEData(w http.ResponseWriter, data any) error {
-	enc, err := json.Marshal(data)
+	enc, err := marshalNoEscapeHTML(data)
 	if err != nil {
 		return err
 	}
@@ -58,7 +64,7 @@ func writeSSEData(w http.ResponseWriter, data any) error {
 }
 
 func writeSSEEvent(w http.ResponseWriter, event string, data any) error {
-	enc, err := json.Marshal(data)
+	enc, err := marshalNoEscapeHTML(data)
 	if err != nil {
 		return err
 	}
@@ -93,9 +99,13 @@ func (a *App) uploadImages(images []format.Image) []string {
 	tokens := a.Tokens.Get()
 	var fileRefs []string
 
-	httpClient := a.HTTPClient
-	if httpClient == nil {
-		httpClient = createHTTPClient(a.Cfg)
+	var requester gemini.Requester = a.Gem.HTTP
+	if requester == nil {
+		if a.HTTPClient != nil {
+			requester = a.HTTPClient
+		} else {
+			requester = createHTTPClient(a.Cfg)
+		}
 	}
 
 	for _, img := range images {
@@ -104,7 +114,7 @@ func (a *App) uploadImages(images []format.Image) []string {
 			continue
 		}
 
-		ref, err := multimodal.UploadImage(httpClient, tokens, data, img.MIME, a.Gem.Cookies, a.Cfg.AuthUser)
+		ref, err := multimodal.UploadImage(requester, tokens, data, img.MIME, a.Gem.Cookies, a.Cfg.AuthUser)
 		if err != nil {
 			a.Logf("Image upload failed: %v", err)
 			continue

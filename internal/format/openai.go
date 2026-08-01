@@ -7,26 +7,11 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
+
+	"github.com/ikhsan3adi/gemini-web2api/internal/models"
 )
 
-type ToolDef struct {
-	Name        string `json:"name"`
-	Description string `json:"description"`
-	Parameters  any    `json:"parameters"`
-}
-
-type ToolCall struct {
-	ID       string           `json:"id"`
-	Type     string           `json:"type"`
-	Function ToolCallFunction `json:"function"`
-}
-
-type ToolCallFunction struct {
-	Name      string `json:"name"`
-	Arguments string `json:"arguments"`
-}
-
-func randHex(n int) string {
+func RandHex(n int) string {
 	bytes := make([]byte, (n+1)/2)
 	_, _ = rand.Read(bytes)
 	return hex.EncodeToString(bytes)[:n]
@@ -50,50 +35,33 @@ func BuildToolChoiceInstruction(toolChoice any) string {
 	return ""
 }
 
-func MessagesToPrompt(messages []map[string]any, tools []map[string]any, toolChoice any) (string, error) {
+func MessagesToPrompt(req models.OpenAIChatRequest) (string, error) {
 	var parts []string
 
-	strChoice, isStr := toolChoice.(string)
-	if !(isStr && strChoice == "none") && len(tools) > 0 {
-		var toolDefs []ToolDef
-		for _, tool := range tools {
-			var fn map[string]any
-			if tType, ok := tool["type"].(string); ok && tType == "function" {
-				if f, ok := tool["function"].(map[string]any); ok {
-					fn = f
-				} else {
-					fn = tool
-				}
-			} else {
-				fn = tool
+	strChoice, isStr := req.ToolChoice.(string)
+	if !(isStr && strChoice == "none") && len(req.Tools) > 0 {
+		var toolDefs []models.OpenAIFunction
+		for _, tool := range req.Tools {
+			fn := tool.Function
+			if fn.Name == "" {
+				fn.Name = tool.Name
+			}
+			if fn.Description == "" {
+				fn.Description = tool.Description
+			}
+			if fn.Parameters == nil {
+				fn.Parameters = tool.Parameters
+			}
+			if fn.Parameters == nil {
+				fn.Parameters = map[string]any{}
 			}
 
-			name, _ := fn["name"].(string)
-			if name == "" {
-				name, _ = tool["name"].(string)
-			}
-			desc, _ := fn["description"].(string)
-			if desc == "" {
-				desc, _ = tool["description"].(string)
-			}
-			params := fn["parameters"]
-			if params == nil {
-				params = tool["parameters"]
-			}
-			if params == nil {
-				params = map[string]any{}
-			}
-
-			toolDefs = append(toolDefs, ToolDef{
-				Name:        name,
-				Description: desc,
-				Parameters:  params,
-			})
+			toolDefs = append(toolDefs, fn)
 		}
 
 		if len(toolDefs) > 0 {
-			constraint := BuildToolChoiceInstruction(toolChoice)
-			defsJSON, _ := json.MarshalIndent(toolDefs, "", "  ")
+			constraint := BuildToolChoiceInstruction(req.ToolChoice)
+			defsJSON, _ := json.Marshal(toolDefs)
 			parts = append(parts, fmt.Sprintf(
 				"# Tool Use\n\n"+
 					"You can call the following tools. Call format:\n"+
@@ -106,15 +74,16 @@ func MessagesToPrompt(messages []map[string]any, tools []map[string]any, toolCho
 		}
 	}
 
-	for _, msg := range messages {
-		role, _ := msg["role"].(string)
+	for _, msg := range req.Messages {
+		role := msg.Role
 		if role == "" {
 			role = "user"
 		}
-		rawContent := msg["content"]
 
 		var contentStr string
-		if contentList, ok := rawContent.([]any); ok {
+		if strContent, ok := msg.Content.(string); ok {
+			contentStr = strContent
+		} else if contentList, ok := msg.Content.([]any); ok {
 			var textParts []string
 			for _, item := range contentList {
 				if mapItem, ok := item.(map[string]any); ok {
@@ -129,42 +98,27 @@ func MessagesToPrompt(messages []map[string]any, tools []map[string]any, toolCho
 				}
 			}
 			contentStr = strings.Join(textParts, " ")
-		} else if strContent, ok := rawContent.(string); ok {
-			contentStr = strContent
 		}
 
 		switch role {
 		case "system":
 			parts = append(parts, fmt.Sprintf("[System instruction]: %s", contentStr))
 		case "assistant":
-			toolCalls, _ := msg["tool_calls"].([]any)
-			if len(toolCalls) > 0 {
+			if len(msg.ToolCalls) > 0 {
 				var tcStrs []string
-				for _, tc := range toolCalls {
-					if tcMap, ok := tc.(map[string]any); ok {
-						fn, _ := tcMap["function"].(map[string]any)
-						name, _ := fn["name"].(string)
-						argsRaw := fn["arguments"]
-						var argsStr string
-						if str, ok := argsRaw.(string); ok {
-							argsStr = str
-						} else {
-							b, _ := json.Marshal(argsRaw)
-							argsStr = string(b)
-						}
-						if argsStr == "" {
-							argsStr = "{}"
-						}
-						tcStrs = append(tcStrs, fmt.Sprintf("```tool_call\n{\"name\": \"%s\", \"arguments\": %s}\n```", name, argsStr))
+				for _, tc := range msg.ToolCalls {
+					argsStr := tc.Function.Arguments
+					if argsStr == "" {
+						argsStr = "{}"
 					}
+					tcStrs = append(tcStrs, fmt.Sprintf("```tool_call\n{\"name\": \"%s\", \"arguments\": %s}\n```", tc.Function.Name, argsStr))
 				}
 				parts = append(parts, fmt.Sprintf("[Assistant]: %s\n%s", contentStr, strings.Join(tcStrs, "\n")))
 			} else {
 				parts = append(parts, fmt.Sprintf("[Assistant]: %s", contentStr))
 			}
 		case "tool":
-			name, _ := msg["name"].(string)
-			parts = append(parts, fmt.Sprintf("[Tool result for %s]: %s", name, contentStr))
+			parts = append(parts, fmt.Sprintf("[Tool result for %s]: %s", msg.Name, contentStr))
 		default:
 			if contentStr != "" {
 				parts = append(parts, contentStr)
@@ -177,8 +131,11 @@ func MessagesToPrompt(messages []map[string]any, tools []map[string]any, toolCho
 
 var reToolCall = regexp.MustCompile(`(?s)\x60\x60\x60tool_call\s*\n(.*?)\n\x60\x60\x60`)
 
-func ParseToolCalls(text string) (string, []ToolCall) {
-	var toolCalls []ToolCall
+// ParseToolCalls extracts tool calls from the raw string output of the model.
+// The model is instructed to output tool calls in markdown blocks e.g. ```tool_call\n{...}\n```.
+// This function parses those blocks, removes them from the text, and returns the cleaned text along with structured ToolCalls.
+func ParseToolCalls(text string) (string, []models.OpenAIToolCall) {
+	var toolCalls []models.OpenAIToolCall
 	matches := reToolCall.FindAllStringSubmatchIndex(text, -1)
 	if len(matches) == 0 {
 		return text, nil
@@ -207,10 +164,10 @@ func ParseToolCalls(text string) (string, []ToolCall) {
 				argsStr = "{}"
 			}
 
-			toolCalls = append(toolCalls, ToolCall{
-				ID:   fmt.Sprintf("call_%s", randHex(8)),
+			toolCalls = append(toolCalls, models.OpenAIToolCall{
+				ID:   fmt.Sprintf("call_%s", RandHex(8)),
 				Type: "function",
-				Function: ToolCallFunction{
+				Function: models.OpenAIToolCallFunction{
 					Name:      data.Name,
 					Arguments: argsStr,
 				},

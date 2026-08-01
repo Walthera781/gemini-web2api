@@ -3,6 +3,8 @@ package format
 import (
 	"strings"
 	"testing"
+
+	"github.com/ikhsan3adi/gemini-web2api/internal/models"
 )
 
 func TestParseToolCalls(t *testing.T) {
@@ -23,12 +25,15 @@ func TestParseToolCalls(t *testing.T) {
 }
 
 func TestMessagesToPrompt(t *testing.T) {
-	messages := []map[string]any{
-		{"role": "system", "content": "Be helpful."},
-		{"role": "user", "content": "Hello!"},
+	req := models.OpenAIChatRequest{
+		Messages: []models.OpenAIMessage{
+			{Role: "system", Content: "Be helpful."},
+			{Role: "user", Content: "Hello!"},
+		},
+		ToolChoice: "auto",
 	}
 
-	prompt, err := MessagesToPrompt(messages, nil, "auto")
+	prompt, err := MessagesToPrompt(req)
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}

@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
+
+	"github.com/ikhsan3adi/gemini-web2api/internal/models"
 )
 
 type Image struct {
@@ -13,13 +15,8 @@ type Image struct {
 	MIME string
 }
 
-type GoogleFunctionCall struct {
-	Name string         `json:"name"`
-	Args map[string]any `json:"args"`
-}
-
-func BuildToolPrompt(defs []ToolDef) string {
-	specBytes, _ := json.MarshalIndent(defs, "", "  ")
+func BuildToolPrompt(defs []models.GoogleFunctionDeclaration) string {
+	specBytes, _ := json.Marshal(defs)
 	return fmt.Sprintf(
 		"# Tool Use\n\n"+
 			"You can call the following tools to help accomplish tasks. "+
@@ -37,25 +34,22 @@ func BuildToolPrompt(defs []ToolDef) string {
 	)
 }
 
-func GoogleToolChoiceInstruction(req map[string]any) string {
-	toolConfig, _ := req["toolConfig"].(map[string]any)
-	fcConfig, _ := toolConfig["functionCallingConfig"].(map[string]any)
-	mode, _ := fcConfig["mode"].(string)
-	if mode == "" {
-		mode = "AUTO"
+func GoogleToolChoiceInstruction(req models.GoogleGenerateRequest) string {
+	mode := "AUTO"
+	if req.ToolConfig != nil && req.ToolConfig.FunctionCallingConfig != nil {
+		if req.ToolConfig.FunctionCallingConfig.Mode != "" {
+			mode = req.ToolConfig.FunctionCallingConfig.Mode
+		}
 	}
 
 	if mode == "NONE" {
 		return "\n\nIMPORTANT: Do NOT call any tools. Respond with text only."
 	}
 	if mode == "ANY" {
-		allowedRaw, ok := fcConfig["allowedFunctionNames"].([]any)
-		if ok && len(allowedRaw) > 0 {
+		if req.ToolConfig != nil && req.ToolConfig.FunctionCallingConfig != nil && len(req.ToolConfig.FunctionCallingConfig.AllowedFunctionNames) > 0 {
 			var names []string
-			for _, item := range allowedRaw {
-				if s, ok := item.(string); ok {
-					names = append(names, fmt.Sprintf("\"%s\"", s))
-				}
+			for _, s := range req.ToolConfig.FunctionCallingConfig.AllowedFunctionNames {
+				names = append(names, fmt.Sprintf("\"%s\"", s))
 			}
 			if len(names) > 0 {
 				return fmt.Sprintf("\n\nIMPORTANT: You MUST call one of these tools: %s. Do not respond with text only.", strings.Join(names, ", "))
@@ -66,64 +60,31 @@ func GoogleToolChoiceInstruction(req map[string]any) string {
 	return ""
 }
 
-func GoogleContentsToPrompt(req map[string]any) (string, []Image, error) {
+func GoogleContentsToPrompt(req models.GoogleGenerateRequest) (string, []Image, error) {
 	var parts []string
 	var images []Image
 
-	toolConfig, _ := req["toolConfig"].(map[string]any)
-	fcConfig, _ := toolConfig["functionCallingConfig"].(map[string]any)
-	fcMode, _ := fcConfig["mode"].(string)
-	if fcMode == "" {
-		fcMode = "AUTO"
+	fcMode := "AUTO"
+	if req.ToolConfig != nil && req.ToolConfig.FunctionCallingConfig != nil && req.ToolConfig.FunctionCallingConfig.Mode != "" {
+		fcMode = req.ToolConfig.FunctionCallingConfig.Mode
 	}
 
-	var toolDefs []ToolDef
-	toolsRaw, ok := req["tools"].([]any)
-	if ok && fcMode != "NONE" {
-		for _, item := range toolsRaw {
-			toolGroup, ok := item.(map[string]any)
-			if !ok {
-				continue
-			}
-			fnDecls, ok := toolGroup["functionDeclarations"].([]any)
-			if !ok {
-				continue
-			}
-			for _, fnRaw := range fnDecls {
-				fn, ok := fnRaw.(map[string]any)
-				if !ok {
-					continue
-				}
-				name, _ := fn["name"].(string)
-				desc, _ := fn["description"].(string)
-				params := fn["parameters"]
-				if params == nil {
-					params = fn["parametersJsonSchema"]
-				}
-				toolDefs = append(toolDefs, ToolDef{
-					Name:        name,
-					Description: desc,
-					Parameters:  params,
-				})
-			}
+	var toolDefs []models.GoogleFunctionDeclaration
+	if fcMode != "NONE" {
+		for _, toolGroup := range req.Tools {
+			toolDefs = append(toolDefs, toolGroup.FunctionDeclarations...)
 		}
 	}
 
-	sysInst, _ := req["systemInstruction"].(map[string]any)
 	var sysText string
-	if sysInst != nil {
-		sysParts, ok := sysInst["parts"].([]any)
-		if ok {
-			var tParts []string
-			for _, pRaw := range sysParts {
-				if pMap, ok := pRaw.(map[string]any); ok {
-					if t, ok := pMap["text"].(string); ok && t != "" {
-						tParts = append(tParts, t)
-					}
-				}
+	if req.SystemInstruction != nil {
+		var tParts []string
+		for _, p := range req.SystemInstruction.Parts {
+			if p.Text != "" {
+				tParts = append(tParts, p.Text)
 			}
-			sysText = strings.Join(tParts, " ")
 		}
+		sysText = strings.Join(tParts, " ")
 	}
 
 	if sysText != "" {
@@ -138,61 +99,46 @@ func GoogleContentsToPrompt(req map[string]any) (string, []Image, error) {
 		parts = append(parts, BuildToolPrompt(toolDefs)+constraint)
 	}
 
-	contentsRaw, ok := req["contents"].([]any)
-	if ok {
-		for _, cRaw := range contentsRaw {
-			content, ok := cRaw.(map[string]any)
-			if !ok {
-				continue
-			}
-			role, _ := content["role"].(string)
-			if role == "" {
-				role = "user"
-			}
+	for _, content := range req.Contents {
+		role := content.Role
+		if role == "" {
+			role = "user"
+		}
 
-			var msgParts []string
-			partsRaw, _ := content["parts"].([]any)
-			for _, pRaw := range partsRaw {
-				pMap, ok := pRaw.(map[string]any)
-				if !ok {
-					continue
+		var msgParts []string
+		for _, p := range content.Parts {
+			if p.Text != "" {
+				msgParts = append(msgParts, p.Text)
+			} else if p.InlineData != nil {
+				mime := p.InlineData.MIMEType
+				if mime == "" {
+					mime = "image/png"
 				}
-				if txt, ok := pMap["text"].(string); ok && txt != "" {
-					msgParts = append(msgParts, txt)
-				} else if inlineData, ok := pMap["inlineData"].(map[string]any); ok {
-					mime, _ := inlineData["mimeType"].(string)
-					if mime == "" {
-						mime = "image/png"
-					}
-					b64Str, _ := inlineData["data"].(string)
-					if dec, err := base64.StdEncoding.DecodeString(b64Str); err == nil {
-						images = append(images, Image{Data: dec, MIME: mime})
-					}
-				} else if fc, ok := pMap["functionCall"].(map[string]any); ok {
-					name, _ := fc["name"].(string)
-					args := fc["args"]
-					if args == nil {
-						args = map[string]any{}
-					}
-					payload, _ := json.Marshal(map[string]any{"name": name, "args": args})
-					msgParts = append(msgParts, fmt.Sprintf("```function_call\n%s\n```", string(payload)))
-				} else if fr, ok := pMap["functionResponse"].(map[string]any); ok {
-					name, _ := fr["name"].(string)
-					resp := fr["response"]
-					if resp == nil {
-						resp = map[string]any{}
-					}
-					payload, _ := json.Marshal(resp)
-					msgParts = append(msgParts, fmt.Sprintf("[Tool result for %s]: %s", name, string(payload)))
+				if dec, err := base64.StdEncoding.DecodeString(p.InlineData.Data); err == nil {
+					images = append(images, Image{Data: dec, MIME: mime})
 				}
+			} else if p.FunctionCall != nil {
+				args := p.FunctionCall.Args
+				if args == nil {
+					args = map[string]any{}
+				}
+				payload, _ := json.Marshal(map[string]any{"name": p.FunctionCall.Name, "args": args})
+				msgParts = append(msgParts, fmt.Sprintf("```function_call\n%s\n```", string(payload)))
+			} else if p.FunctionResponse != nil {
+				resp := p.FunctionResponse.Response
+				if resp == nil {
+					resp = map[string]any{}
+				}
+				payload, _ := json.Marshal(resp)
+				msgParts = append(msgParts, fmt.Sprintf("[Tool result for %s]: %s", p.FunctionResponse.Name, string(payload)))
 			}
+		}
 
-			text := strings.Join(msgParts, "\n")
-			if role == "model" {
-				parts = append(parts, fmt.Sprintf("[Assistant]: %s", text))
-			} else {
-				parts = append(parts, text)
-			}
+		text := strings.Join(msgParts, "\n")
+		if role == "model" {
+			parts = append(parts, fmt.Sprintf("[Assistant]: %s", text))
+		} else {
+			parts = append(parts, text)
 		}
 	}
 
@@ -204,8 +150,8 @@ var (
 	reUnfencedGoogleCall = regexp.MustCompile(`(?s)(?:^|\n)function_call\s*\n(\{[^\x60]*?\})`)
 )
 
-func ParseGoogleFunctionCalls(text string) (string, []GoogleFunctionCall) {
-	var calls []GoogleFunctionCall
+func ParseGoogleFunctionCalls(text string) (string, []models.GoogleFunctionCall) {
+	var calls []models.GoogleFunctionCall
 	clean := text
 
 	for _, m := range reFencedGoogleCall.FindAllStringSubmatch(clean, -1) {
@@ -219,7 +165,7 @@ func ParseGoogleFunctionCalls(text string) (string, []GoogleFunctionCall) {
 				if args == nil {
 					args = map[string]any{}
 				}
-				calls = append(calls, GoogleFunctionCall{Name: name, Args: args})
+				calls = append(calls, models.GoogleFunctionCall{Name: name, Args: args})
 			}
 		}
 	}
@@ -236,7 +182,7 @@ func ParseGoogleFunctionCalls(text string) (string, []GoogleFunctionCall) {
 				if args == nil {
 					args = map[string]any{}
 				}
-				calls = append(calls, GoogleFunctionCall{Name: name, Args: args})
+				calls = append(calls, models.GoogleFunctionCall{Name: name, Args: args})
 			}
 		}
 	}
@@ -251,7 +197,7 @@ func ParseGoogleFunctionCalls(text string) (string, []GoogleFunctionCall) {
 					args, hasArgs = data["arguments"].(map[string]any)
 				}
 				if hasArgs {
-					calls = append(calls, GoogleFunctionCall{Name: name, Args: args})
+					calls = append(calls, models.GoogleFunctionCall{Name: name, Args: args})
 					clean = ""
 				}
 			}

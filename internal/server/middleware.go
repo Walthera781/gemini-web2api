@@ -2,6 +2,7 @@ package server
 
 import (
 	"crypto/subtle"
+	"net"
 	"net/http"
 	"strings"
 	"time"
@@ -79,8 +80,13 @@ func (a *App) withCORS(next http.Handler) http.Handler {
 	})
 }
 
+const maxRequestBodySize = 32 << 20 // 32 MB limit
+
 func (a *App) withAuthAndLogging(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Body != nil {
+			r.Body = http.MaxBytesReader(w, r.Body, maxRequestBodySize)
+		}
 		start := time.Now()
 		lrw := newLoggingResponseWriter(w)
 
@@ -103,9 +109,9 @@ func (a *App) logRequest(r *http.Request, statusCode int, duration time.Duration
 	if !a.Cfg.LogRequests {
 		return
 	}
-	clientIP := r.RemoteAddr
-	if idx := strings.LastIndex(clientIP, ":"); idx != -1 {
-		clientIP = clientIP[:idx]
+	clientIP, _, err := net.SplitHostPort(r.RemoteAddr)
+	if err != nil {
+		clientIP = r.RemoteAddr
 	}
 	a.Logf("%s %s %s -> %d (%dms)", clientIP, r.Method, r.URL.Path, statusCode, duration.Milliseconds())
 }

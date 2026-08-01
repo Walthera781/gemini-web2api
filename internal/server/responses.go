@@ -45,11 +45,28 @@ func (a *App) handleResponses(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var tools []map[string]any
+	var reqMessages []models.OpenAIMessage
+	for _, m := range messages {
+		role, _ := m["role"].(string)
+		content := m["content"]
+		reqMessages = append(reqMessages, models.OpenAIMessage{Role: role, Content: content})
+	}
+
+	var reqTools []models.OpenAITool
 	if toolsRaw, ok := req["tools"].([]any); ok {
 		for _, t := range toolsRaw {
 			if tm, ok := t.(map[string]any); ok {
-				tools = append(tools, tm)
+				var fn models.OpenAIFunction
+				if f, ok := tm["function"].(map[string]any); ok {
+					fn.Name, _ = f["name"].(string)
+					fn.Description, _ = f["description"].(string)
+					fn.Parameters = f["parameters"]
+				} else {
+					fn.Name, _ = tm["name"].(string)
+					fn.Description, _ = tm["description"].(string)
+					fn.Parameters = tm["parameters"]
+				}
+				reqTools = append(reqTools, models.OpenAITool{Function: fn})
 			}
 		}
 	}
@@ -59,7 +76,13 @@ func (a *App) handleResponses(w http.ResponseWriter, r *http.Request) {
 		toolChoice = "auto"
 	}
 
-	prompt, err := format.MessagesToPrompt(messages, tools, toolChoice)
+	chatReq := models.OpenAIChatRequest{
+		Messages:   reqMessages,
+		Tools:      reqTools,
+		ToolChoice: toolChoice,
+	}
+
+	prompt, err := format.MessagesToPrompt(chatReq)
 	if err != nil || strings.TrimSpace(prompt) == "" {
 		writeJSON(w, http.StatusBadRequest, map[string]any{"error": map[string]any{"message": "empty input"}})
 		return
@@ -74,13 +97,13 @@ func (a *App) handleResponses(w http.ResponseWriter, r *http.Request) {
 	strChoice, isStr := toolChoice.(string)
 	isToolNone := isStr && strChoice == "none"
 
-	var toolCalls []format.ToolCall
-	if len(tools) > 0 && text != "" && !isToolNone {
+	var toolCalls []models.OpenAIToolCall
+	if len(reqTools) > 0 && text != "" && !isToolNone {
 		text, toolCalls = format.ParseToolCalls(text)
 	}
 
-	rid := fmt.Sprintf("resp_%s", randHex(16))
-	mid := fmt.Sprintf("msg_%s", randHex(12))
+	rid := fmt.Sprintf("resp_%s", format.RandHex(16))
+	mid := fmt.Sprintf("msg_%s", format.RandHex(12))
 
 	outputItems := format.BuildResponseOutput(text, toolCalls, mid)
 

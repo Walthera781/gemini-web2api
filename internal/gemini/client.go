@@ -191,7 +191,9 @@ func (c *Client) GenerateStream(prompt string, modelID, thinkMode int, fileRefs 
 	var lastErr error
 
 	for attempt := 0; attempt < c.Cfg.RetryAttempts; attempt++ {
-		parser.Reset()
+		// Reset the chunk buffer on each retry, but preserve the prevText state.
+		// This ensures we don't emit duplicate deltas to the client if a stream connection drops halfway.
+		parser.ResetBuffer()
 
 		req, err := http.NewRequest("POST", reqURL, strings.NewReader(bodyStr))
 		if err != nil {
@@ -252,6 +254,9 @@ func (c *Client) streamAttempt(body io.Reader, parser *StreamParser, emit func(s
 	}
 }
 
+// isClientDisconnect helps distinguish between upstream server errors (which we might want to retry)
+// and actual client-side disconnections or non-retryable transport errors.
+// If the client disconnected, we should abort the retry loop immediately to save resources.
 func isClientDisconnect(err error) bool {
 	if err == nil {
 		return false

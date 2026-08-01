@@ -2,6 +2,7 @@ package gemini
 
 import (
 	"bytes"
+	"fmt"
 	"io"
 	"net/http"
 	"strings"
@@ -54,7 +55,8 @@ func getTLSClient(profileName string, timeoutSec int) (*tlsClientAdapter, error)
 	clientMapMu.Lock()
 	defer clientMapMu.Unlock()
 
-	if adapter, ok := clientMap[profileName]; ok {
+	cacheKey := fmt.Sprintf("%s:%d", profileName, timeoutSec)
+	if adapter, ok := clientMap[cacheKey]; ok {
 		return adapter, nil
 	}
 
@@ -70,7 +72,7 @@ func getTLSClient(profileName string, timeoutSec int) (*tlsClientAdapter, error)
 	}
 
 	adapter := &tlsClientAdapter{client: client}
-	clientMap[profileName] = adapter
+	clientMap[cacheKey] = adapter
 	return adapter, nil
 }
 
