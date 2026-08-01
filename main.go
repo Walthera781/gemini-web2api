@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"runtime/debug"
 	"strings"
 	"syscall"
 	"time"
@@ -17,9 +18,21 @@ import (
 	"github.com/ikhsan3adi/gemini-web2api/internal/server"
 )
 
-const Version = "1.1.0"
+var Version = "dev"
+
+func resolveVersion() string {
+	if Version != "" && Version != "dev" {
+		return Version
+	}
+	if info, ok := debug.ReadBuildInfo(); ok && info.Main.Version != "" && info.Main.Version != "(devel)" {
+		return info.Main.Version
+	}
+	return Version
+}
 
 func main() {
+	currentVersion := resolveVersion()
+
 	portFlag := flag.Int("port", 0, "Server port")
 	configFlag := flag.String("config", "", "Config file path")
 	cookieFlag := flag.String("cookie-file", "", "Cookie file path")
@@ -29,7 +42,7 @@ func main() {
 	flag.Parse()
 
 	if *versionFlag {
-		fmt.Printf("gemini-web2api v%s\n", Version)
+		fmt.Printf("gemini-web2api %s\n", currentVersion)
 		os.Exit(0)
 	}
 
@@ -59,7 +72,7 @@ func main() {
 		cfg.Impersonate = *impersonateFlag
 	}
 
-	app := server.New(cfg, Version)
+	app := server.New(cfg, currentVersion)
 
 	modelKeys := make([]string, 0, len(models.MODELS))
 	for k := range models.MODELS {
@@ -81,7 +94,7 @@ func main() {
 		impersonateStatus = "none (stdlib)"
 	}
 
-	fmt.Printf("gemini-web2api v%s\n", Version)
+	fmt.Printf("gemini-web2api %s\n", currentVersion)
 	fmt.Printf("  Listening:   http://%s:%d\n", cfg.Host, cfg.Port)
 	fmt.Printf("  Base URL:    http://localhost:%d/v1\n", cfg.Port)
 	fmt.Printf("  Models:      %s\n", strings.Join(modelKeys, ", "))
