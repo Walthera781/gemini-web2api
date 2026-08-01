@@ -6,14 +6,14 @@
 
 High-performance Go proxy converting Google Gemini's web interface into an OpenAI-compatible API. Zero cost, cross-platform, single static binary.
 
-This is a complete Go rewrite of the original [Python gemini-web2api](https://github.com/Sophomoresty/gemini-web2api). It features massive concurrency throughput, lower memory footprint, and brand new capabilities like **Multimodal Vision** and **TLS Impersonation** which are absent in the Python version.
+This is a complete Go rewrite of the original [Python gemini-web2api](https://github.com/Sophomoresty/gemini-web2api). It features massive concurrency throughput, minimal memory footprint, and enhanced capabilities such as **TLS Impersonation** for WAF bypass.
 
 ## Key Features
 
 - **Optional API Keys**: No auth when `api_keys` is empty, OpenAI-style Bearer auth when configured.
 - **OpenAI Compatible**: Drop-in replacement for `/v1/chat/completions`, `/v1/models`, and `/v1/responses` (Codex CLI).
-- **Multimodal (Vision)**: Fully supports sending images (`image_url` / base64) to Gemini. Utilizes Scotty Resumable Upload protocol natively! (🔥 New in Go)
-- **TLS Impersonation**: Built-in support to bypass Cloudflare/WAF by mimicking Chrome/Edge TLS fingerprints using `tls-client`. (🔥 New in Go)
+- **Multimodal (Vision)**: Fully supports sending images (`image_url` / base64) to Gemini using Scotty Resumable Upload protocol natively with built-in image compression.
+- **TLS Impersonation**: Built-in support to bypass Cloudflare/WAF by mimicking Chrome/Edge TLS fingerprints using `tls-client` 🔥.
 - **Tool Calling**: Full function calling support (OpenAI format).
 - **Multiple Models**: Flash (3.6), Extended Thinking (20k+ char output), Pro, Auto, Lite.
 - **Thinking Depth**: Adjustable reasoning via `@think=N` suffix (0=deepest, 4=shallowest).
