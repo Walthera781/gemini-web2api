@@ -7,6 +7,9 @@ import (
 	"strings"
 )
 
+// Model represents a Gemini backend routing configuration.
+// Mode corresponds to the Gemini upstream mode ID, Think specifies the default reasoning depth,
+// and Extra contains index-based overrides for Gemini's sparse RPC request array.
 type Model struct {
 	Mode  int         `json:"mode"`
 	Think int         `json:"think"`
@@ -65,9 +68,14 @@ type Resolved struct {
 	Extra map[int]any
 }
 
+const DefaultModelName = "gemini-3.6-flash"
+
+// Resolve maps a requested model string to its corresponding backend configuration.
+// It supports model name suffixes like "@think=N" (e.g. "gemini-3.6-flash@think=0")
+// to dynamically override the model's default thinking depth without modifying the model mapping.
 func Resolve(modelName, defaultName string) (Resolved, error) {
 	if defaultName == "" {
-		defaultName = "gemini-3.6-flash"
+		defaultName = DefaultModelName
 	}
 
 	var thinkOverride *int

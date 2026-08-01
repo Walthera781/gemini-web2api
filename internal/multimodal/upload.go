@@ -18,11 +18,11 @@ func UploadImage(client gemini.Requester, tokens PageTokens, imgBytes []byte, mi
 
 	pushID := tokens.PushID
 	if pushID == "" {
-		pushID = "feeds/mcudyrk2a4khkz"
+		pushID = DefaultPushID
 	}
 	pctx := tokens.Pctx
 	if pctx == "" {
-		pctx = "CgcSBWjK7pYx"
+		pctx = DefaultPctx
 	}
 
 	cookieInfo, _ := cookieCache.Load()

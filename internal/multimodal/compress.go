@@ -12,7 +12,11 @@ import (
 	"golang.org/x/image/draw"
 )
 
-const MaxImageB64Size = 50000
+const (
+	MaxImageB64Size    = 50000
+	MaxImageDimension  = 256
+	DefaultJPEGQuality = 60
+)
 
 func CompressIfNeeded(b64 string, maxSize int) (string, error) {
 	if maxSize <= 0 {
@@ -37,8 +41,7 @@ func CompressIfNeeded(b64 string, maxSize int) (string, error) {
 	width := bounds.Dx()
 	height := bounds.Dy()
 
-	maxDim := 256
-	ratio := math.Min(float64(maxDim)/float64(width), float64(maxDim)/float64(height))
+	ratio := math.Min(float64(MaxImageDimension)/float64(width), float64(MaxImageDimension)/float64(height))
 
 	var dstImg image.Image = img
 	if ratio < 1.0 {
@@ -50,7 +53,7 @@ func CompressIfNeeded(b64 string, maxSize int) (string, error) {
 	}
 
 	var buf bytes.Buffer
-	err = jpeg.Encode(&buf, dstImg, &jpeg.Options{Quality: 60})
+	err = jpeg.Encode(&buf, dstImg, &jpeg.Options{Quality: DefaultJPEGQuality})
 	if err != nil {
 		return "", fmt.Errorf("failed to encode jpeg: %w", err)
 	}

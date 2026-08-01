@@ -10,8 +10,9 @@ import (
 )
 
 func TestHealthEndpoint(t *testing.T) {
+	testVer := "test-version-1.0"
 	cfg := config.Default()
-	app := New(cfg, "1.1.0")
+	app := New(cfg, testVer)
 	handler := app.Handler()
 
 	req := httptest.NewRequest("GET", "/", nil)
@@ -28,7 +29,7 @@ func TestHealthEndpoint(t *testing.T) {
 		t.Fatalf("Invalid JSON response: %v", err)
 	}
 
-	if body["status"] != "ok" || body["version"] != "1.1.0" {
+	if body["status"] != "ok" || body["version"] != testVer {
 		t.Errorf("Unexpected health response: %v", body)
 	}
 }
@@ -36,7 +37,7 @@ func TestHealthEndpoint(t *testing.T) {
 func TestAuthMatrix(t *testing.T) {
 	cfg := config.Default()
 	cfg.APIKeys = []string{"sk-secret-key"}
-	app := New(cfg, "1.1.0")
+	app := New(cfg, "test-version")
 	handler := app.Handler()
 
 	// 1. No key -> 401
@@ -94,7 +95,7 @@ func TestAuthMatrix(t *testing.T) {
 
 func TestCORSPreflight(t *testing.T) {
 	cfg := config.Default()
-	app := New(cfg, "1.1.0")
+	app := New(cfg, "test-version")
 	handler := app.Handler()
 
 	req := httptest.NewRequest("OPTIONS", "/v1/chat/completions", nil)

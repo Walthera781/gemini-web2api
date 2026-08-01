@@ -13,6 +13,16 @@ import (
 	"github.com/ikhsan3adi/gemini-web2api/internal/gemini"
 )
 
+const (
+	DefaultPushID = "feeds/mcudyrk2a4khkz"
+	DefaultPctx   = "CgcSBWjK7pYx"
+	TokenCacheTTL = 600 * time.Second
+)
+
+// Internal regex patterns used to extract hidden session tokens embedded in Gemini HTML responses:
+// - `qKIAYe`: Push-ID used as tenant identifier for image uploads
+// - `Ylro7b`: Client-Pctx (context token) required for image upload authorization
+// - `thykhd`: XSRF/AT token required for state-changing POST requests
 var (
 	rePushID = regexp.MustCompile(`"qKIAYe":"([^"]+)"`)
 	rePctx   = regexp.MustCompile(`"Ylro7b":"([^"]+)"`)
@@ -40,8 +50,8 @@ func NewTokenCache(cfg config.Config, cookie *gemini.CookieCache, client *http.C
 		cookie: cookie,
 		client: client,
 		tokens: PageTokens{
-			PushID: "feeds/mcudyrk2a4khkz",
-			Pctx:   "CgcSBWjK7pYx",
+			PushID: DefaultPushID,
+			Pctx:   DefaultPctx,
 			At:     "",
 		},
 	}
@@ -49,8 +59,8 @@ func NewTokenCache(cfg config.Config, cookie *gemini.CookieCache, client *http.C
 
 func (c *TokenCache) fetchPageTokens() PageTokens {
 	tokens := PageTokens{
-		PushID: "feeds/mcudyrk2a4khkz",
-		Pctx:   "CgcSBWjK7pYx",
+		PushID: DefaultPushID,
+		Pctx:   DefaultPctx,
 		At:     "",
 	}
 
@@ -96,7 +106,7 @@ func (c *TokenCache) Get() PageTokens {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	if time.Since(c.ts) > 600*time.Second {
+	if time.Since(c.ts) > TokenCacheTTL {
 		c.tokens = c.fetchPageTokens()
 		c.ts = time.Now()
 	}

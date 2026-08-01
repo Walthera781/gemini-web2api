@@ -20,8 +20,16 @@ func uuidV4() string {
 	return fmt.Sprintf("%s-%s-%s-%s-%s", h[0:8], h[8:12], h[12:16], h[16:20], h[20:32])
 }
 
+const GeminiPayloadSize = 102
+
+// BuildBody constructs the form-encoded payload (`f.req`) expected by Gemini's frontend RPC endpoint.
+// Gemini web uses a sparse JSON array (102 elements) where specific indices represent payload parameters:
+// - Index 0: Prompt text and image attachment references
+// - Index 17: Reasoning/thinking mode depth
+// - Index 59: Request UUID
+// - Index 79: Target model mode ID
 func BuildBody(prompt string, modelID, thinkMode int, fileRefs []string, extra map[int]any, cfg config.Config) string {
-	inner := make([]any, 102)
+	inner := make([]any, GeminiPayloadSize)
 
 	if len(fileRefs) > 0 {
 		refs := make([]any, len(fileRefs))
