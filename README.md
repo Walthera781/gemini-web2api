@@ -4,6 +4,8 @@
   <img src="https://raw.githubusercontent.com/Sophomoresty/gemini-web2api/main/logo.png" width="200" alt="gemini-web2api logo">
 </p>
 
+[English](README.md) | [中文文档](README.zh-CN.md)
+
 High-performance Go proxy converting Google Gemini's web interface into an OpenAI-compatible API. Zero cost, cross-platform, single static binary.
 
 This is a complete Go rewrite of the original [Python gemini-web2api](https://github.com/Sophomoresty/gemini-web2api). It features massive concurrency throughput, minimal memory footprint, and enhanced capabilities such as **TLS Impersonation** for WAF bypass.
@@ -30,12 +32,14 @@ This is a complete Go rewrite of the original [Python gemini-web2api](https://gi
 Download the pre-compiled binary for your OS (Linux, macOS, Windows) from the [Releases](https://github.com/ikhsan3adi/gemini-web2api/releases) page:
 
 **Linux / macOS:**
+
 ```bash
 chmod +x gemini-web2api
 ./gemini-web2api --port 8081
 ```
 
 **Windows (PowerShell / Command Prompt):**
+
 ```powershell
 .\gemini-web2api.exe --port 8081
 ```
@@ -66,12 +70,14 @@ cd gemini-web2api
 After building, run the executable:
 
 **Linux / macOS:**
+
 ```bash
 go build -o gemini-web2api .
 ./gemini-web2api --port 8081
 ```
 
 **Windows (PowerShell / Command Prompt):**
+
 ```powershell
 go build -o gemini-web2api.exe .
 .\gemini-web2api.exe --port 8081
@@ -82,6 +88,7 @@ Server starts at `http://localhost:8081/v1`.
 ### 4. Run via Docker
 
 Before running via Docker, copy the example config file:
+
 ```bash
 cp config.example.json config.json
 ```
@@ -133,6 +140,7 @@ curl http://localhost:8081/v1/chat/completions \
 ```powershell
 curl.exe --% http://127.0.0.1:8081/v1/chat/completions -H "Content-Type: application/json" -H "Authorization: Bearer sk-your-key" -d "{\"model\":\"gemini-3.5-flash\",\"messages\":[{\"role\":\"user\",\"content\":\"Hello!\"}]}"
 ```
+
 > Note: On Windows PowerShell, use `curl.exe` and `--%` so PowerShell does not reinterpret JSON quoting or curl options.
 
 ### OpenAI Python SDK
@@ -156,6 +164,7 @@ gemini
 ```
 
 Supports Google native API endpoints:
+
 - `GET /v1beta/models` — list models
 - `POST /v1beta/models/{model}:generateContent` — non-streaming
 - `POST /v1beta/models/{model}:streamGenerateContent` — streaming (SSE)
@@ -185,16 +194,19 @@ gemini-3.5-flash-thinking@think=4   # shallowest
 ## Advanced Features (Go Exclusive)
 
 ### 1. Vision / Multimodal Uploads
+
 Unlike the Python version which ignores images, this Go port actively intercepts `image_url` payloads (both base64 encoded and external HTTP URLs).
 It initiates a background Scotty Resumable Upload session, converts the base64 image into Google internal WIZ blobs, and passes the WIZ image references directly to Gemini.
 Just send OpenAI standard multimodal payloads and it will work!
 
 ### 2. TLS Impersonation (Bypass WAF)
+
 If you run this tool in datacenters (like AWS/DigitalOcean) where Google blocks the IP with a 403 Forbidden, you can impersonate a real browser's TLS signature:
 
 ```bash
 ./gemini-web2api --impersonate chrome_120
 ```
+
 Or in `config.json`: `"impersonate": "chrome_120"`. Supported profiles include `chrome_112` to `chrome_130`, `edge`, and `safari`.
 
 ## Optional: Cookie for Pro
@@ -217,8 +229,9 @@ SID=your_sid; HSID=your_hsid; SSID=your_ssid; APISID=your_apisid; SAPISID=your_s
 ```
 
 Or use JSON format if you know your specific `SAPISID` hashing needs:
+
 ```json
-{"cookie": "SID=xxx; HSID=xxx; ...", "sapisid": "your_sapisid_value"}
+{ "cookie": "SID=xxx; HSID=xxx; ...", "sapisid": "your_sapisid_value" }
 ```
 
 **Alternative (browser extension)**: Use any "Export Cookies" extension to export cookies for `gemini.google.com` in Netscape format, then convert to the single-line format above.
@@ -277,6 +290,7 @@ When `api_keys` is empty `[]`, authentication is disabled. When keys are set, `/
 If you cannot access `gemini.google.com` directly, configure a proxy:
 
 **Method 1: CLI argument**
+
 ```bash
 # Linux / macOS
 ./gemini-web2api --proxy http://127.0.0.1:7890
@@ -286,11 +300,13 @@ If you cannot access `gemini.google.com` directly, configure a proxy:
 ```
 
 **Method 2: config.json**
+
 ```json
-{"proxy": "http://127.0.0.1:7890"}
+{ "proxy": "http://127.0.0.1:7890" }
 ```
 
 **Method 3: Environment variable**
+
 ```bash
 # Linux / macOS (bash)
 export HTTPS_PROXY=http://127.0.0.1:7890
